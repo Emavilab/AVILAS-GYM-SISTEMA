@@ -45,7 +45,7 @@ function resetTimer() {
     clearTimeout(timer);
     timer = setTimeout(function() {
         window.location.href = 'logout.php';
-    }, 10000); // 10 segundos
+    }, 120000); // 2 minutos
 }
 
 // Eventos que reinician el contador
