@@ -5,22 +5,18 @@ require 'config/db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario = $_POST['usuario'];
     $password = $_POST['password'];
-
-    $stmt = $conn->prepare("SELECT * FROM usuarios WHERE usuario = ?");
-    $stmt->bind_param("s", $usuario);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-        if ($password === $row['password']) {
+    $result = $conn->query("SELECT * FROM usuarios WHERE usuario = '$usuario'");
+    if ($result && $result->num_rows === 1) {
+        $row = $result->fetch_assoc();
+        if (password_verify($password, $row['password'])) {
             $_SESSION['usuario'] = $usuario;
             header('Location: dashboard.php');
             exit;
         } else {
-            $error = "Contraseña incorrecta";
+            $error = "Contraseña incorrecta.";
         }
     } else {
-        $error = "Usuario no encontrado";
+        $error = "Usuario no encontrado.";
     }
 }
 ?>
@@ -41,6 +37,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      class="img-fluid mb-4 mx-auto d-block rounded-circle border border-3 border-primary shadow"
                      style="max-height: 180px; max-width: 180px; object-fit: cover;">
                 <h2 class="mb-4">Iniciar Sesión</h2>
+
+                <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'usuario_eliminado'): ?>
+                    <div class="alert alert-warning text-center">
+                        Tu usuario fue eliminado. Por favor contacta al administrador.
+                    </div>
+                <?php endif; ?>
+
                 <input name="usuario" class="form-control mb-3" placeholder="Usuario" required>
                 <input name="password" type="password" class="form-control mb-3" placeholder="Contraseña" required>
                 <button class="btn btn-primary w-100">Ingresar</button>

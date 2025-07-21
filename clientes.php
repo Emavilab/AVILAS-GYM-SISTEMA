@@ -41,9 +41,19 @@ if (isset($_GET['eliminar'])) {
 
 if (isset($_GET['renovar'])) {
     $id = $_GET['renovar'];
+    $cliente = $conn->query("SELECT tipo_mensualidad, fecha_vencimiento FROM clientes WHERE id = $id")->fetch_assoc();
     $hoy = date('Y-m-d');
-    $vencimiento = date('Y-m-d', strtotime('+31 days'));
-    if ($conn->query("UPDATE clientes SET fecha_registro = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id")) {
+    if ($cliente['tipo_mensualidad'] === 'quincenal') {
+        $vencimiento = date('Y-m-d', strtotime('+17 days'));
+        $update = "UPDATE clientes SET fecha_registro = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
+    } elseif ($cliente['tipo_mensualidad'] === 'mensual') {
+        $vencimiento = date('Y-m-d', strtotime('+31 days'));
+        $update = "UPDATE clientes SET fecha_registro = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
+    } else {
+        // Si es personalizado, solo actualiza estado y fecha_registro, NO la fecha_vencimiento
+        $update = "UPDATE clientes SET fecha_registro = '$hoy', estado = 'activo' WHERE id = $id";
+    }
+    if ($conn->query($update)) {
         header("Location: clientes.php?msg=renovado");
         exit;
     } else {
@@ -200,7 +210,11 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
                                                 data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>">
                                                 Eliminar
                                             </button>
-                                            <a href="?renovar=<?php echo $c['id']; ?>" class="btn btn-sm btn-success ms-1">Renovar</a>
+                                            <?php if ($c['estado'] == 'vencido'): ?>
+                                                <a href="?renovar=<?php echo $c['id']; ?>" class="btn btn-sm btn-success ms-1">Renovar</a>
+                                            <?php else: ?>
+                                                <a href="#" class="btn btn-sm btn-success ms-1 disabled" tabindex="-1" aria-disabled="true">Renovar</a>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php } ?>
