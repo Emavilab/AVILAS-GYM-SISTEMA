@@ -89,6 +89,26 @@ if (isset($_GET['eliminar_usuario'])) {
 }
 
 $usuarios = $conn->query("SELECT * FROM usuarios");
+
+// Obtener el primer y último mes de registro
+$primero = $conn->query("SELECT MIN(fecha_registro) AS primero FROM clientes")->fetch_assoc()['primero'];
+$ultimo = date('Y-m-01'); // Mes actual
+
+$labelsMeses = [];
+$clientesPorMes = [];
+
+if ($primero) {
+    $inicio = new DateTime(date('Y-m-01', strtotime($primero)));
+    $fin = new DateTime($ultimo);
+    while ($inicio <= $fin) {
+        $mes = $inicio->format('Y-m');
+        $label = $inicio->format('M Y');
+        $labelsMeses[] = $label;
+        $res = $conn->query("SELECT COUNT(*) AS total FROM clientes WHERE DATE_FORMAT(fecha_registro, '%Y-%m') = '$mes'");
+        $clientesPorMes[] = $res->fetch_assoc()['total'];
+        $inicio->modify('+1 month');
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -149,6 +169,15 @@ $usuarios = $conn->query("SELECT * FROM usuarios");
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="card shadow mb-4">
+    <div class="card-body">
+        <h5 class="card-title text-center mb-3">Clientes registrados por mes</h5>
+        <canvas id="graficoClientesMes" height="100"></canvas>
+    </div>
+</div>
                 </div>
             </div>
 
@@ -277,8 +306,23 @@ $usuarios = $conn->query("SELECT * FROM usuarios");
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var modalMensaje = document.getElementById('modalMensaje');
+    if (modalMensaje) {
+        // Recarga la página automáticamente después de cerrar el modal con un retraso
+        modalMensaje.addEventListener('hidden.bs.modal', function () {
+            setTimeout(function () {
+                location.reload();
+            }, 5000); // Espera 5 segundos antes de recargar
+        });
+
+        // Mostrar el modal al cargar la página
+        var bsModal = bootstrap.Modal.getOrCreateInstance(modalMensaje);
+        bsModal.show();
+    }
+
     var eliminarModal = document.getElementById('modalEliminarUsuario');
     eliminarModal.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
@@ -304,6 +348,16 @@ document.addEventListener('DOMContentLoaded', function () {
         this.classList.add('active');
         document.getElementById('btnClientes').classList.remove('active');
         document.getElementById('btnUsuarios').classList.remove('active');
+
+        // Actualizar datos del resumen dinámicamente
+        fetch('resumen.php')
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector('.card-title.text-success + h2').textContent = data.activos;
+                document.querySelector('.card-title.text-danger + h2').textContent = data.vencidos;
+                document.querySelector('.card-title.text-primary + h2').textContent = data.total;
+            })
+            .catch(error => console.error('Error al actualizar el resumen:', error));
     };
     document.getElementById('btnClientes').onclick = function () {
         document.getElementById('seccionDashboard').style.display = 'none';
@@ -321,7 +375,54 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btnDashboard').classList.remove('active');
         document.getElementById('btnClientes').classList.remove('active');
     };
+
+    // Gráfico de Clientes por Mes
+    const ctx = document.getElementById('graficoClientesMes').getContext('2d');
+    const graficoClientesMes = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode($labelsMeses); ?>,
+            datasets: [{
+                label: 'Clientes nuevos',
+                data: <?php echo json_encode($clientesPorMes); ?>,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
 });
+
+function limpiarFormularioClienteIframe() {
+    // Busca el iframe de clientes
+    var iframe = document.querySelector('#seccionClientes iframe');
+    if (iframe && iframe.contentWindow) {
+        // Ejecuta la función de limpieza dentro del iframe
+        iframe.contentWindow.postMessage('limpiarFormularioCliente', '*');
+    }
+}
+
+// Llama a la función cada vez que cambias de pantalla
+document.getElementById('btnDashboard')?.addEventListener('click', limpiarFormularioClienteIframe);
+document.getElementById('btnUsuarios')?.addEventListener('click', limpiarFormularioClienteIframe);
+document.getElementById('btnClientes')?.addEventListener('click', limpiarFormularioClienteIframe);
+
+let timer;
+function resetTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+        window.location.href = 'logout.php';
+    }, 120000); // 2 minutes
+}
+['mousemove', 'keydown', 'mousedown', 'touchstart'].forEach(function(evt) {
+    document.addEventListener(evt, resetTimer, false);
+});
+resetTimer();
 </script>
 </body>
 </html>

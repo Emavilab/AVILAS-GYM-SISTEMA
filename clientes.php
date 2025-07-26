@@ -7,11 +7,15 @@ $mensaje = '';
 $tipo_mensaje = 'success';
 
 if (isset($_POST['agregar'])) {
-    $nombre = $_POST['nombre'];
-    $telefono = $_POST['telefono'];
+    $nombre = trim($_POST['nombre']);
+    $telefono = trim($_POST['telefono']);
     $tipo_mensualidad = $_POST['tipo_mensualidad'];
     $fecha_vencimiento_personalizada = $_POST['fecha_vencimiento_personalizada'];
     $hoy = date('Y-m-d');
+    if ($nombre === '' || $telefono === '' || $tipo_mensualidad === '' || !preg_match('/^\d{7,15}$/', $telefono)) {
+        header("Location: clientes.php?msg=error_agregar");
+        exit;
+    }
     if (!empty($fecha_vencimiento_personalizada)) {
         $vencimiento = $fecha_vencimiento_personalizada;
     } else {
@@ -149,7 +153,7 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
                             <input name="nombre" placeholder="Nombre" class="form-control" required>
                         </div>
                         <div class="col-md-3">
-                            <input name="telefono" placeholder="Teléfono" class="form-control" required>
+                            <input name="telefono" placeholder="Teléfono" class="form-control" required pattern="\d{7,15}" inputmode="numeric" title="Solo números, mínimo 7 dígitos">
                         </div>
                         <div class="col-md-3">
                             <select name="tipo_mensualidad" id="tipo_mensualidad" class="form-select" required>
@@ -215,16 +219,28 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
                                             <?php else: ?>
                                                 <a href="#" class="btn btn-sm btn-success ms-1 disabled" tabindex="-1" aria-disabled="true">Renovar</a>
                                             <?php endif; ?>
+                                            <?php
+                                                $fechaHoy = date('Y-m-d');
+                                                $fechaVencimiento = $c['fecha_vencimiento'];
+                                                $diasRestantes = (strtotime($fechaVencimiento) - strtotime($fechaHoy)) / 86400;
+                                            ?>
+                                            <?php if ($diasRestantes <= 2 && $diasRestantes >= 0): ?>
+                                                <?php
+                                                    $mensajeWhatsapp = "Hola " . $c['nombre'] . ", tu mensualidad en Avilas Gym vence el " . date('d/m/Y', strtotime($fechaVencimiento)) . ". ¡No olvides renovarla!";
+                                                    $telefono = preg_replace('/[^0-9]/', '', $c['telefono']); // Solo números
+                                                    $urlWhatsapp = "https://wa.me/504$telefono?text=" . urlencode($mensajeWhatsapp);
+                                                ?>
+                                                <a href="<?php echo $urlWhatsapp; ?>" target="_blank" class="btn btn-sm btn-success ms-1 btn-whatsapp"
+   onclick="this.style.display='none'">
+    <i class="bi bi-whatsapp"></i> WhatsApp
+</a>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php } ?>
                             </tbody>
                         </table>
-                    </div>
-                    <a href="dashboard.php" class="btn btn-outline-primary w-100 mt-3">Volver al Dashboard</a>
-                </div>
             </div>
-        </div>
     </div>
 </div>
 
@@ -319,6 +335,12 @@ document.getElementById('buscador').addEventListener('keyup', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+    var modalMensaje = document.getElementById('modalMensaje');
+    if (modalMensaje) {
+        var bsModal = bootstrap.Modal.getOrCreateInstance(modalMensaje);
+        bsModal.show();
+    }
+    
     var modalEliminar = document.getElementById('modalEliminar');
     modalEliminar.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
@@ -344,24 +366,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('editar_fecha_vencimiento').value = fecha_vencimiento;
     });
 });
-<?php if ($mensaje): ?>
-    var modal = new bootstrap.Modal(document.getElementById('modalMensaje'));
-    window.onload = function() { modal.show(); }
-<?php endif; ?>
+
 </script>
-<script>
-let timer;
-function resetTimer() {
-    clearTimeout(timer);
-    timer = setTimeout(function() {
-        window.location.href = 'logout.php';
-    }, 120000); // 2 minutes
-}
-['mousemove', 'keydown', 'mousedown', 'touchstart'].forEach(function(evt) {
-    document.addEventListener(evt, resetTimer, false);
-});
-resetTimer();
-</script>
+
 <script>
 document.getElementById('tipo_mensualidad').addEventListener('change', function() {
     var divFecha = document.getElementById('fechaPersonalizadaDiv');
@@ -372,6 +379,48 @@ document.getElementById('tipo_mensualidad').addEventListener('change', function(
         divFecha.style.display = 'none';
         document.getElementById('fecha_vencimiento_personalizada').required = false;
         document.getElementById('fecha_vencimiento_personalizada').value = '';
+    }
+});
+</script>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    var nombre = document.querySelector('input[name="nombre"]').value.trim();
+    var telefono = document.querySelector('input[name="telefono"]').value.trim();
+    var tipo = document.querySelector('select[name="tipo_mensualidad"]').value;
+    if (!nombre || !telefono || !tipo) {
+        alert('Todos los campos son obligatorios.');
+        e.preventDefault();
+        return;
+    }
+    if (!/^\d{7,15}$/.test(telefono)) {
+        alert('El teléfono debe contener solo números (mínimo 7 dígitos).');
+        e.preventDefault();
+        return;
+    }
+});
+</script>
+
+<script>
+function limpiarFormularioCliente() {
+    var form = document.querySelector('form');
+    if (form) {
+        form.reset();
+        // Oculta el campo de fecha personalizada si está visible
+        var fechaDiv = document.getElementById('fechaPersonalizadaDiv');
+        if (fechaDiv) fechaDiv.style.display = 'none';
+    }
+}
+
+// Si tienes botones de navegación con estos IDs, llama a la función al hacer clic
+document.getElementById('btnDashboard')?.addEventListener('click', limpiarFormularioCliente);
+document.getElementById('btnUsuarios')?.addEventListener('click', limpiarFormularioCliente);
+document.getElementById('btnClientes')?.addEventListener('click', limpiarFormularioCliente);
+
+// Escuchar el evento de mensaje para limpiar el formulario
+window.addEventListener('message', function(event) {
+    if (event.data === 'limpiarFormularioCliente') {
+        limpiarFormularioCliente();
     }
 });
 </script>
