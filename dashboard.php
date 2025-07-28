@@ -25,6 +25,9 @@ $activos = $conn->query("SELECT COUNT(*) AS total FROM clientes WHERE estado = '
 $vencidos = $conn->query("SELECT COUNT(*) AS total FROM clientes WHERE estado = 'vencido'")->fetch_assoc()['total'];
 $total = $conn->query("SELECT COUNT(*) AS total FROM clientes")->fetch_assoc()['total'];
 
+$usuariosRegistrados = $conn->query("SELECT COUNT(*) AS total FROM usuarios")->fetch_assoc()['total'];
+$ultimoAcceso = $conn->query("SELECT MAX(ultimo_acceso) AS fecha FROM usuarios")->fetch_assoc()['fecha'];
+
 $modalMsg = '';
 $modalType = 'success';
 
@@ -171,6 +174,21 @@ if ($primero) {
                     </div>
                 </div>
 
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-center shadow">
+                            <div class="card-body">
+                                <h5 class="card-title text-info"><i class="bi bi-person-badge"></i> Usuarios registrados</h5>
+                                <h2 class="text-info"><?php echo $usuariosRegistrados; ?></h2>
+                                <p class="mt-2 mb-0 text-secondary">
+                                    Último acceso: 
+                                    <?php echo $ultimoAcceso ? date('d/m/Y H:i', strtotime($ultimoAcceso)) : 'Sin registros'; ?>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-4">
                     <div class="card shadow mb-4">
     <div class="card-body">
@@ -311,7 +329,7 @@ if ($primero) {
 document.addEventListener('DOMContentLoaded', function () {
     var modalMensaje = document.getElementById('modalMensaje');
     if (modalMensaje) {
-        // Recarga la página automáticamente después de cerrar el modal con un retraso
+        // Recarga la página automáticamente después de cerrar el modal with a delay
         modalMensaje.addEventListener('hidden.bs.modal', function () {
             setTimeout(function () {
                 location.reload();

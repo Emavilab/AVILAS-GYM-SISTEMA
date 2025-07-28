@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $row = $result->fetch_assoc();
         if (password_verify($password, $row['password'])) {
             $_SESSION['usuario'] = $usuario;
+            $conn->query("UPDATE usuarios SET ultimo_acceso = NOW() WHERE usuario = '$usuario'");
             header('Location: dashboard.php');
             exit;
         } else {
