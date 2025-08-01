@@ -49,13 +49,13 @@ if (isset($_GET['renovar'])) {
     $hoy = date('Y-m-d');
     if ($cliente['tipo_mensualidad'] === 'quincenal') {
         $vencimiento = date('Y-m-d', strtotime('+17 days'));
-        $update = "UPDATE clientes SET fecha_registro = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
+        $update = "UPDATE clientes SET fecha_entrada = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
     } elseif ($cliente['tipo_mensualidad'] === 'mensual') {
         $vencimiento = date('Y-m-d', strtotime('+31 days'));
-        $update = "UPDATE clientes SET fecha_registro = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
+        $update = "UPDATE clientes SET fecha_entrada = '$hoy', fecha_vencimiento = '$vencimiento', estado = 'activo' WHERE id = $id";
     } else {
-        // Si es personalizado, solo actualiza estado y fecha_registro, NO la fecha_vencimiento
-        $update = "UPDATE clientes SET fecha_registro = '$hoy', estado = 'activo' WHERE id = $id";
+        // Si es personalizado, solo actualiza estado y fecha_entrada, NO la fecha_vencimiento
+        $update = "UPDATE clientes SET fecha_entrada = '$hoy', estado = 'activo' WHERE id = $id";
     }
     if ($conn->query($update)) {
         header("Location: clientes.php?msg=renovado");
@@ -173,72 +173,76 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle text-center" id="tablaClientes">
                             <thead class="table-dark">
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Teléfono</th>
-                                    <th>Tipo</th>
-                                    <th>Estado</th>
-                                    <th>Vence</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($c = $clientes->fetch_assoc()) { ?>
-                                    <tr>
-                                        <td><?php echo $c['nombre']; ?></td>
-                                        <td><?php echo $c['telefono']; ?></td>
-                                        <td><?php echo ucfirst($c['tipo_mensualidad']); ?></td>
-                                        <td>
-                                            <?php if ($c['estado'] == 'activo'): ?>
-                                                <span class="badge bg-success">Activo</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-danger">Vencido</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?php echo $c['fecha_vencimiento']; ?></td>
-                                        <td>
-                                            <button type="button" class="btn btn-sm btn-warning me-1"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modalEditar"
-                                                data-id="<?php echo $c['id']; ?>"
-                                                data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>"
-                                                data-telefono="<?php echo htmlspecialchars($c['telefono']); ?>"
-                                                data-tipo="<?php echo $c['tipo_mensualidad']; ?>"
-                                                data-vencimiento="<?php echo $c['fecha_vencimiento']; ?>">
-                                                Editar
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modalEliminar"
-                                                data-id="<?php echo $c['id']; ?>"
-                                                data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>">
-                                                Eliminar
-                                            </button>
-                                            <?php if ($c['estado'] == 'vencido'): ?>
-                                                <a href="?renovar=<?php echo $c['id']; ?>" class="btn btn-sm btn-success ms-1">Renovar</a>
-                                            <?php else: ?>
-                                                <a href="#" class="btn btn-sm btn-success ms-1 disabled" tabindex="-1" aria-disabled="true">Renovar</a>
-                                            <?php endif; ?>
-                                            <?php
-                                                $fechaHoy = date('Y-m-d');
-                                                $fechaVencimiento = $c['fecha_vencimiento'];
-                                                $diasRestantes = (strtotime($fechaVencimiento) - strtotime($fechaHoy)) / 86400;
-                                            ?>
-                                            <?php if ($diasRestantes <= 2 && $diasRestantes >= 0): ?>
-                                                <?php
-                                                    $mensajeWhatsapp = "Hola " . $c['nombre'] . ", tu mensualidad en Avilas Gym vence el " . date('d/m/Y', strtotime($fechaVencimiento)) . ". ¡No olvides renovarla!";
-                                                    $telefono = preg_replace('/[^0-9]/', '', $c['telefono']); // Solo números
-                                                    $urlWhatsapp = "https://wa.me/504$telefono?text=" . urlencode($mensajeWhatsapp);
-                                                ?>
-                                                <a href="<?php echo $urlWhatsapp; ?>" target="_blank" class="btn btn-sm btn-success ms-1 btn-whatsapp"
+    <tr>
+        <th>Nombre</th>
+        <th>Teléfono</th>
+        <th>Tipo</th>
+        <th>Estado</th>
+        <th>Fecha de Registro</th>
+        <th>Fecha de Entrada</th>
+        <th>Vence</th>
+        <th>Acciones</th>
+    </tr>
+</thead>
+<tbody>
+    <?php while ($c = $clientes->fetch_assoc()) { ?>
+        <tr>
+            <td><?php echo $c['nombre']; ?></td>
+            <td><?php echo $c['telefono']; ?></td>
+            <td><?php echo ucfirst($c['tipo_mensualidad']); ?></td>
+            <td>
+                <?php if ($c['estado'] == 'activo'): ?>
+                    <span class="badge bg-success">Activo</span>
+                <?php else: ?>
+                    <span class="badge bg-danger">Vencido</span>
+                <?php endif; ?>
+            </td>
+            <td><?php echo $c['fecha_registro']; ?></td>
+            <td><?php echo $c['fecha_entrada']; ?></td>
+            <td><?php echo $c['fecha_vencimiento']; ?></td>
+            <td>
+                <button type="button" class="btn btn-sm btn-warning me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalEditar"
+                    data-id="<?php echo $c['id']; ?>"
+                    data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>"
+                    data-telefono="<?php echo htmlspecialchars($c['telefono']); ?>"
+                    data-tipo="<?php echo $c['tipo_mensualidad']; ?>"
+                    data-vencimiento="<?php echo $c['fecha_vencimiento']; ?>">
+                    Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalEliminar"
+                    data-id="<?php echo $c['id']; ?>"
+                    data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>">
+                    Eliminar
+                </button>
+                <?php if ($c['estado'] == 'vencido'): ?>
+                    <a href="?renovar=<?php echo $c['id']; ?>" class="btn btn-sm btn-success ms-1">Renovar</a>
+                <?php else: ?>
+                    <a href="#" class="btn btn-sm btn-success ms-1 disabled" tabindex="-1" aria-disabled="true">Renovar</a>
+                <?php endif; ?>
+                <?php
+                    $fechaHoy = date('Y-m-d');
+                    $fechaVencimiento = $c['fecha_vencimiento'];
+                    $diasRestantes = (strtotime($fechaVencimiento) - strtotime($fechaHoy)) / 86400;
+                ?>
+                <?php if ($diasRestantes <= 2 && $diasRestantes >= 0): ?>
+                    <?php
+                        $mensajeWhatsapp = "Hola " . $c['nombre'] . ", tu mensualidad en Avilas Gym vence el " . date('d/m/Y', strtotime($fechaVencimiento)) . ". ¡No olvides renovarla!";
+                        $telefono = preg_replace('/[^0-9]/', '', $c['telefono']); // Solo números
+                        $urlWhatsapp = "https://wa.me/504$telefono?text=" . urlencode($mensajeWhatsapp);
+                    ?>
+                    <a href="<?php echo $urlWhatsapp; ?>" target="_blank" class="btn btn-sm btn-success ms-1 btn-whatsapp"
    onclick="this.style.display='none'">
     <i class="bi bi-whatsapp"></i> WhatsApp
 </a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php } ?>
-                            </tbody>
+                <?php endif; ?>
+            </td>
+        </tr>
+    <?php } ?>
+</tbody>
                         </table>
             </div>
     </div>

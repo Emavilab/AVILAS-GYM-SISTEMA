@@ -5,9 +5,10 @@ require 'config/db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario = $_POST['usuario'];
     $password = $_POST['password'];
-    $result = $conn->query("SELECT * FROM usuarios WHERE usuario = '$usuario'");
-    if ($result && $result->num_rows === 1) {
-        $row = $result->fetch_assoc();
+    $res = $conn->query("SELECT * FROM usuarios WHERE usuario = '$usuario'");
+    if ($res && $row = $res->fetch_assoc()) {
+        $_SESSION['usuario'] = $usuario;
+        $_SESSION['rol'] = $row['rol'];
         if (password_verify($password, $row['password'])) {
             $_SESSION['usuario'] = $usuario;
             $conn->query("UPDATE usuarios SET ultimo_acceso = NOW() WHERE usuario = '$usuario'");

@@ -35,7 +35,8 @@ $modalType = 'success';
 if (isset($_POST['agregar_usuario'])) {
     $nuevo_usuario = $_POST['nuevo_usuario'];
     $nuevo_password = password_hash($_POST['nuevo_password'], PASSWORD_DEFAULT);
-    if ($conn->query("INSERT INTO usuarios (usuario, password) VALUES ('$nuevo_usuario', '$nuevo_password')")) {
+    $nuevo_rol = $_POST['nuevo_rol'];
+    if ($conn->query("INSERT INTO usuarios (usuario, password, rol) VALUES ('$nuevo_usuario', '$nuevo_password', '$nuevo_rol')")) {
         $modalMsg = "Usuario agregado correctamente.";
         $modalType = "success";
     } else {
@@ -49,6 +50,7 @@ if (isset($_POST['editar_confirmar'])) {
     $id = $_POST['editar_id'];
     $usuario = trim($_POST['editar_usuario']);
     $password = $_POST['editar_password'];
+    $rol = $_POST['editar_rol']; // Nuevo
 
     if ($usuario === '') {
         $modalMsg = "El campo usuario no puede estar vacío.";
@@ -59,6 +61,7 @@ if (isset($_POST['editar_confirmar'])) {
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
             $updates[] = "password='$password_hash'";
         }
+        $updates[] = "rol='" . $conn->real_escape_string($rol) . "'"; // Nuevo
         $updateSQL = "UPDATE usuarios SET " . implode(", ", $updates) . " WHERE id=$id";
         if ($conn->query($updateSQL)) {
             $modalMsg = "Usuario actualizado correctamente.";
@@ -112,6 +115,9 @@ if ($primero) {
         $inicio->modify('+1 month');
     }
 }
+
+$mesActual = date('Y-m');
+$clientesMes = $conn->query("SELECT COUNT(*) AS total FROM clientes WHERE DATE_FORMAT(fecha_entrada, '%Y-%m') = '$mesActual'")->fetch_assoc()['total'];
 ?>
 
 <!DOCTYPE html>
@@ -139,7 +145,9 @@ if ($primero) {
             <ul class="nav nav-pills flex-column mb-auto">
                 <li><a href="#" class="nav-link active" id="btnDashboard"><i class="bi bi-house me-2"></i>Dashboard</a></li>
                 <li><a href="#" class="nav-link" id="btnClientes"><i class="bi bi-people me-2"></i>Gestionar Clientes</a></li>
+                <?php if ($_SESSION['rol'] === 'administrador'): ?>
                 <li><a href="#" class="nav-link" id="btnUsuarios"><i class="bi bi-person-gear me-2"></i>Gestionar Usuarios</a></li>
+                <?php endif; ?>
                 <li class="mt-4"><a href="logout.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a></li>
             </ul>
         </nav>
@@ -187,6 +195,14 @@ if ($primero) {
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="card text-center shadow">
+                            <div class="card-body">
+                                <h5 class="card-title text-info"><i class="bi bi-calendar-check"></i> Clientes este mes</h5>
+                                <h2 class="text-info"><?php echo $clientesMes; ?></h2>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -203,6 +219,7 @@ if ($primero) {
                 <iframe src="clientes.php" style="width:100%;height:80vh;border:none;"></iframe>
             </div>
 
+            <?php if ($_SESSION['rol'] === 'administrador'): ?>
             <div id="seccionUsuarios" style="display:none;">
                 <div class="card shadow mb-4">
                     <div class="card-header bg-secondary text-white text-center">
@@ -210,16 +227,22 @@ if ($primero) {
                     </div>
                     <div class="card-body">
                         <form method="POST" class="row g-2 mb-4">
-                            <div class="col-md-5">
-                                <input name="nuevo_usuario" class="form-control" placeholder="Usuario" required>
-                            </div>
-                            <div class="col-md-5">
-                                <input name="nuevo_password" type="password" class="form-control" placeholder="Contraseña" required>
-                            </div>
-                            <div class="col-md-2 d-grid">
-                                <button name="agregar_usuario" class="btn btn-success">Agregar</button>
-                            </div>
-                        </form>
+    <div class="col-md-4">
+        <input name="nuevo_usuario" class="form-control" placeholder="Usuario" required>
+    </div>
+    <div class="col-md-4">
+        <input name="nuevo_password" type="password" class="form-control" placeholder="Contraseña" required>
+    </div>
+    <div class="col-md-2">
+        <select name="nuevo_rol" class="form-select" required>
+            <option value="empleado">Empleado</option>
+            <option value="administrador">Administrador</option>
+        </select>
+    </div>
+    <div class="col-md-2 d-grid">
+        <button name="agregar_usuario" class="btn btn-success">Agregar</button>
+    </div>
+</form>
 
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover align-middle text-center">
@@ -238,7 +261,8 @@ if ($primero) {
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#modalEditarUsuario"
                                                     data-id="<?php echo $u['id']; ?>"
-                                                    data-usuario="<?php echo htmlspecialchars($u['usuario']); ?>">
+                                                    data-usuario="<?php echo htmlspecialchars($u['usuario']); ?>"
+                                                    data-rol="<?php echo htmlspecialchars($u['rol']); ?>">
                                                     Editar
                                                 </button>
                                                 <button type="button" class="btn btn-danger btn-sm"
@@ -257,6 +281,7 @@ if ($primero) {
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         </main>
     </div>
 </div>
@@ -314,6 +339,13 @@ if ($primero) {
             <label class="form-label">Nueva contraseña (opcional)</label>
             <input type="password" class="form-control" name="editar_password">
         </div>
+        <div class="mb-3">
+            <label class="form-label">Rol</label>
+            <select class="form-select" name="editar_rol" id="modalEditarRol" required>
+                <option value="empleado">Empleado</option>
+                <option value="administrador">Administrador</option>
+            </select>
+        </div>
       </div>
       <div class="modal-footer">
         <button name="editar_confirmar" class="btn btn-warning">Guardar</button>
@@ -355,8 +387,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var button = event.relatedTarget;
         var id = button.getAttribute('data-id');
         var usuario = button.getAttribute('data-usuario');
+        var rol = button.getAttribute('data-rol'); // Nuevo
         document.getElementById('modalEditarId').value = id;
         document.getElementById('modalEditarUsuario').value = usuario;
+        document.getElementById('modalEditarRol').value = rol; // Nuevo
     });
 
     document.getElementById('btnDashboard').onclick = function () {
@@ -385,14 +419,16 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btnDashboard').classList.remove('active');
         document.getElementById('btnUsuarios').classList.remove('active');
     };
-    document.getElementById('btnUsuarios').onclick = function () {
-        document.getElementById('seccionDashboard').style.display = 'none';
-        document.getElementById('seccionClientes').style.display = 'none';
-        document.getElementById('seccionUsuarios').style.display = 'block';
-        this.classList.add('active');
-        document.getElementById('btnDashboard').classList.remove('active');
-        document.getElementById('btnClientes').classList.remove('active');
-    };
+    if (document.getElementById('btnUsuarios')) {
+        document.getElementById('btnUsuarios').onclick = function () {
+            document.getElementById('seccionDashboard').style.display = 'none';
+            document.getElementById('seccionClientes').style.display = 'none';
+            document.getElementById('seccionUsuarios').style.display = 'block';
+            this.classList.add('active');
+            document.getElementById('btnDashboard').classList.remove('active');
+            document.getElementById('btnClientes').classList.remove('active');
+        };
+    }
 
     // Gráfico de Clientes por Mes
     const ctx = document.getElementById('graficoClientesMes').getContext('2d');
