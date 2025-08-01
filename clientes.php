@@ -249,7 +249,8 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
 </div>
 
 <!-- Modal de validación -->
-<div class="modal fade" id="modalMensaje" tabindex="-1" aria-labelledby="modalMensajeLabel" aria-hidden="true">
+<?php if (!empty($mensaje)): ?>
+<div class="modal fade show" id="modalMensaje" tabindex="-1" aria-labelledby="modalMensajeLabel" style="display:block;" aria-modal="true" role="dialog">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-<?php echo $tipo_mensaje; ?> text-white">
@@ -267,6 +268,7 @@ $clientes = $conn->query("SELECT * FROM clientes ORDER BY id DESC");
     </div>
   </div>
 </div>
+<?php endif; ?>
 
 <!-- Modal de confirmación de eliminación -->
 <div class="modal fade" id="modalEliminar" tabindex="-1" aria-labelledby="modalEliminarLabel" aria-hidden="true">
